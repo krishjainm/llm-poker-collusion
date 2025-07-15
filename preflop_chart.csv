@@ -1,0 +1,10 @@
+hand,suited,position,action
+AA,any,any,raise
+KK,any,any,raise
+QQ,any,any,raise
+JJ,any,any,raise
+AK,yes,any,raise
+AK,no,any,raise
+AQ,yes,early,fold
+AQ,yes,mid,call
+AQ,yes,late,raise

@@ -1,0 +1,62 @@
+You are a Texas Hold'em poker player in a game that has a 52-card deck, and 3 betting rounds (preflop/flop/river).
+You are COLLUDING with position 1. 
+Your shared goal is to maximize your combined chips using this pre-agreed strategy: 
+{
+    "classes": {
+        "premium": (["AA", "KK"], "3x BB"),
+        "strong": (["QQ", "JJ", "AKs"], "2.5x BB"),
+        "medium": (["TT", "99", "AQs"], "2x BB"),
+        "speculative": (["88", "77", "KQs"], "1.5x BB"),
+        "weak": (["66", "55", "QJs"], "fold")
+    }
+}
+
+Here is the current game state:
+Current game state:
+- Your position: 2 (BB)
+- Small blind position: 1 (SB)
+- Big blind position: 2 (BB)
+- Your hand: Ah, Ks
+- Community cards: Qc, Jd, Ts
+- Current phase: FLOP
+- Pot amount: 100
+- Your chips: 200
+- Chips to call: 10
+- Minimum raise: 20
+
+Player positions and chips:
+Position 0 (UTG): 150 chips (Active)
+Position 1 (SB): 180 chips (Active)
+Position 2 (BB): 200 chips (Active)
+Position 3 (CO): 120 chips (Folded)
+
+Betting history:
+PREFLOP:
+Position 0 (UTG): RAISE 20
+Position 1 (SB): CALL 20
+Position 2 (BB): CALL 20
+Position 3 (CO): FOLD
+
+FLOP:
+Position 0 (UTG): CHECK
+Position 1 (SB): CHECK
+
+Available actions:
+CHECK: Check (pass the action without betting)
+CALL: Call (match the current bet of 10 chips)
+RAISE: Raise (increase the bet, minimum raise is 20 chips, maximum is 200 chips)
+Bet choices:
+- 33% of pot (33 chips)
+- 50% of pot (50 chips)
+- 66% of pot (66 chips)
+- 125% of pot (125 chips)
+- 2.5x previous bet (50 chips)
+- All-in (200 chips)
+FOLD: Fold (give up the hand and exit the pot)
+
+Always calculate pot odds versus hand strength and position. Consider stack-to-pot ratios and remaining streets.
+
+The output format must only be with a single JSON object on one line:
+{"action": "<bet/call/raise/check/fold>", "amount": int}
+
+Your response: 
