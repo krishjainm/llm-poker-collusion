@@ -8,7 +8,8 @@ import warnings
 
 from deprecated.sphinx import versionadded
 
-from texasholdem.game.action_type import ActionType
+from texasholdem.texasholdem.game.action_type import ActionType
+
 
 
 @versionadded(version="0.9.0")

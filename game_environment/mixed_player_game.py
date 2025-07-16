@@ -2,19 +2,26 @@
 Mixed player game implementation for Texas Hold'em poker.
 This module provides a game where some players are controlled by LLMs and others are human-controlled.
 """
-
+from pathlib import Path
 import os
 import time
 from typing import List, Dict, Optional, Tuple, Set, Union
 from dotenv import load_dotenv
-from texasholdem.game.game import TexasHoldEm
-from texasholdem.gui.text_gui import TextGUI
-from texasholdem.game.action_type import ActionType
+from texasholdem.texasholdem.game.game import TexasHoldEm
+#from texasholdem.texasholdem.gui.text_gui import TextGUI
+from texasholdem.texasholdem.game.action_type import ActionType
 from game_environment.llm_agent import LLMAgent
 from game_environment.collusion_llm_agent import CollusionLLMAgent
+from game_environment.preflop_strategy import load_preflop_chart, lookup_action
 from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
 import accelerate
 import torch
+from game_environment.preflop_strategy import load_preflop_chart, lookup_action
+from transformers.utils import logging
+logging.set_verbosity_debug()
+import traceback
+
+
 
 
 class MixedPlayerGame:
@@ -50,14 +57,18 @@ class MixedPlayerGame:
         load_dotenv()
 
         # Load the local Hugging Face model once and share it with all agents
-        model_path = "/workspace/models/Llama-3.2-3B-Instruct"
+        from pathlib import Path
+
+        model_path = Path("C:/Users/Krish Jain/Downloads/multiagent-poker-collusion-main/workspace/models/Llama-3.2-3B-Instruct").as_posix()
+
+        from transformers import AutoModelForCausalLM
 
         self.hf_model = AutoModelForCausalLM.from_pretrained(
-            model_path,
-            device_map="auto",
-            use_safetensors=True,
-            trust_remote_code=True,
+            "gpt2",
+            device_map="auto"
         )
+        self.hf_tokenizer = AutoTokenizer.from_pretrained("gpt2")
+        print("[DEBUG] Successfully loaded LLM model & tokenizer.")
 
         # No tokenizer is created here; each agent will load its own tokenizer on demand
 
@@ -67,17 +78,14 @@ class MixedPlayerGame:
             small_blind=small_blind,
             max_players=max_players,
         )
-        self.gui = TextGUI(game=self.game)
+        self.gui = None
 
         # Set up AI players
         if llm_player_ids is None:
-            llm_player_ids = [0]  # Default to player 0 being LLM-controlled
+            llm_player_ids = [0, 1, 2, 3, 4, 5]  # Make all players LLM-controlled
 
-        if collusion_llm_player_ids is None:
-            collusion_llm_player_ids = [
-                1,
-                2,
-            ]  # Default to players 1 and 2 being collusion LLM-controlled
+        collusion_llm_player_ids = []
+
 
         self.llm_player_ids = set(llm_player_ids)
         self.collusion_llm_player_ids = set(collusion_llm_player_ids)
@@ -87,23 +95,29 @@ class MixedPlayerGame:
             - self.collusion_llm_player_ids
         )
 
+        # Load the preflop strategy table
+        self.preflop_strategy = load_preflop_chart('preflop_chart.csv')
+
+
         # Initialize AI agents
         self.ai_agents = {}
 
         # Initialize regular LLM agents with the shared Hugging Face model
         for player_id in self.llm_player_ids:
-            self.ai_agents[player_id] = LLMAgent(model=self.hf_model)
+            self.ai_agents[player_id] = LLMAgent(model=self.hf_model, tokenizer=self.hf_tokenizer)
 
         # Initialize collusion LLM agents
         if len(collusion_llm_player_ids) == 2:
-            # Create a pair of colluding agents
             player1, player2 = sorted(collusion_llm_player_ids)
             self.ai_agents[player1] = CollusionLLMAgent(
-                model=self.hf_model, teammate_id=player2
+                model=self.hf_model, tokenizer=self.hf_tokenizer, teammate_id=player2
             )
             self.ai_agents[player2] = CollusionLLMAgent(
-                model=self.hf_model, teammate_id=player1
+                model=self.hf_model, tokenizer=self.hf_tokenizer, teammate_id=player1
             )
+
+
+
 
     def _is_ai_player(self, player_id: int) -> bool:
         """
@@ -121,18 +135,28 @@ class MixedPlayerGame:
         )
 
     def _get_ai_action(self, player_id: int) -> Tuple[ActionType, Optional[int], str]:
-        """
-        Get the action from an AI player.
+        print(f"[DEBUG] Calling _get_ai_action for player_id={player_id}")
+        # Check if we're in the preflop round
+        if self.game.hand_phase.name == "PREFLOP":
+            # VERY SIMPLIFIED: you would get real cards from self.game.players[player_id].hole_cards
+            # Here we just hardcode example values for testing
+            hand = "AK"  # should parse from actual hole cards
+            suited = "yes"  # determine if suits match
+            position = "early"  # determine from seat index
 
-        Args:
-            player_id: The ID of the AI player
+            # Lookup the recommended action
+            action = lookup_action(self.preflop_strategy, hand)
+            print(f"[DEBUG] Preflop strategy lookup: hand={hand}, suited={suited}, position={position} -> action={action}")
 
-        Returns:
-            A tuple of (action_type, total, reason) where:
-                - action_type is the type of action to take
-                - total is the amount to raise to (if applicable)
-                - reason is the explanation for the action
-        """
+            # Convert string action to ActionType
+            if action == "raise":
+                return ActionType.RAISE, self.game.current_bet * 2, "Preflop GTO"
+            elif action == "call":
+                return ActionType.CALL, None, "Preflop GTO"
+            else:
+                return ActionType.FOLD, None, "Preflop GTO"
+
+        # Normal postflop or other phase: call LLM or CFR
         if (
             player_id not in self.llm_player_ids
             and player_id not in self.collusion_llm_player_ids
@@ -142,15 +166,13 @@ class MixedPlayerGame:
         agent = self.ai_agents[player_id]
         return agent.get_action(self.game, player_id)
 
-    def _get_human_action(self) -> Tuple[ActionType, Optional[int]]:
-        """
-        Get the action from a human player.
 
-        Returns:
-            A tuple of (action_type, total) where total is the amount to raise to (if applicable)
-        """
+    def _get_human_action(self) -> Tuple[ActionType, Optional[int]]:
+        print("[DEBUG] Auto-folding human player to avoid loop.")
+        self.game.take_action(ActionType.FOLD)
+        return ActionType.FOLD, None
         # Use the GUI to get the action from the human player
-        self.gui.run_step()
+        #self.gui.run_step()
 
         # The action is already taken by the GUI, so we just return None
         return None, None
@@ -162,10 +184,13 @@ class MixedPlayerGame:
         error_message = None
         try:
             while self.game.is_game_running():
+                print("[DEBUG] Starting new hand...")
                 self.game.start_hand()
+                print(f"[DEBUG] Hand running? {self.game.is_hand_running()}")
 
                 while self.game.is_hand_running():
                     current_player = self.game.current_player
+                    print(f"[DEBUG] Current player: {current_player}")
 
                     if self._is_ai_player(current_player):
                         # Get action from AI
@@ -186,7 +211,7 @@ class MixedPlayerGame:
                 print(f"\nExported hand history to:")
                 print(f"PGN: {pgn_path}")
                 print(f"JSON: {json_path}")
-                self.gui.replay_history(pgn_path)
+                # self.gui.replay_history(pgn_path)
 
                 # Ask if the game should continue
                 time.sleep(10)
@@ -195,14 +220,15 @@ class MixedPlayerGame:
             print("Game over!")
 
         except Exception as e:
-            # Save the error message
-            error_message = f"\nError occurred: {str(e)}"
+            # Save the error message and include full traceback
+            error_message = f"\nError occurred: {str(e)}\n{traceback.format_exc()}"
         else:
             # No error occurred
             error_message = None
         finally:
+
             # Always clean up the curses session
-            self.gui.hide()
+            #self.gui.hide()
             # Reset the terminal
             os.system("reset")
 

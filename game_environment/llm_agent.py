@@ -8,11 +8,11 @@ import re
 from typing import Tuple, Optional, Dict, Any
 import openai
 from dotenv import load_dotenv
-from texasholdem.game.game import TexasHoldEm
-from texasholdem.game.action_type import ActionType
-from texasholdem.game.player_state import PlayerState
-from texasholdem.card.card import Card
-from texasholdem.game.hand_phase import HandPhase
+from texasholdem.texasholdem.game.game import TexasHoldEm
+from texasholdem.texasholdem.game.action_type import ActionType
+from texasholdem.texasholdem.game.player_state import PlayerState
+from texasholdem.texasholdem.card.card import Card
+from texasholdem.texasholdem.game.hand_phase import HandPhase
 import json
 from transformers import AutoTokenizer, PreTrainedModel
 
@@ -33,7 +33,7 @@ class LLMAgent:
     An agent that uses a Language Model to make decisions in a poker game.
     """
 
-    def __init__(self, model, api_key: Optional[str] = None):
+    def __init__(self, model, tokenizer, api_key: Optional[str] = None):
         """
         Initialize the LLM agent.
 
@@ -63,9 +63,7 @@ class LLMAgent:
                     "Unable to determine the pretrained model path/name for tokenizer loading"
                 )
 
-            self.tokenizer = AutoTokenizer.from_pretrained(
-                model_id_or_path, trust_remote_code=True
-            )
+            self.tokenizer = tokenizer
 
         else:
             # OpenAI model branch -------------------------------------------
@@ -266,6 +264,8 @@ Betting history:
     def get_action(
         self, game: TexasHoldEm, player_id: int
     ) -> Tuple[ActionType, Optional[int], Optional[str]]:
+        print(f"[DEBUG] Calling get_action for player {player_id}")
+
         """
         Get the next action from the LLM.
 
@@ -316,14 +316,16 @@ Your response:"""
                 )
 
                 # Generate
+                print("[DEBUG] About to generate using Hugging Face model...")
                 output_ids = self.model.generate(
                     **inputs,
-                    max_new_tokens=50,
-                    temperature=0.7,
+                    max_new_tokens=10,
+                    temperature=1.0,
                     do_sample=True,
                     pad_token_id=self.tokenizer.eos_token_id,
                 )
 
+                print("[DEBUG] Finished generating text.")
                 # Decode – we only want the newly generated tokens
                 generated_text = self.tokenizer.decode(
                     output_ids[0][inputs["input_ids"].shape[1] :],

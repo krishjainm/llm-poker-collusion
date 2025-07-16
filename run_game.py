@@ -5,6 +5,8 @@ Script to run the mixed player poker game.
 
 import os
 import argparse
+import sys
+sys.path.append(".")
 from game_environment.mixed_player_game import MixedPlayerGame
 
 

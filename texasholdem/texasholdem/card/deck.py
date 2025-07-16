@@ -2,8 +2,9 @@ from __future__ import annotations
 import random
 from typing import List
 
-from texasholdem.card import card
-from texasholdem.card.card import Card
+from texasholdem.texasholdem.card import card
+from texasholdem.texasholdem.card.card import Card
+
 
 
 class Deck:

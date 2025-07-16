@@ -2,5 +2,7 @@
 Main package for texasholdem
 """
 
-from texasholdem.card import *
-from texasholdem.game import *
+from texasholdem.texasholdem.card import *
+
+from texasholdem.texasholdem.game import *
+

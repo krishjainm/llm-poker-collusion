@@ -16,10 +16,11 @@ from pathlib import Path
 import os
 import json
 
-from texasholdem.game.action_type import ActionType
-from texasholdem.card.card import Card
-from texasholdem.game.hand_phase import HandPhase
-from texasholdem.evaluator import evaluator
+from texasholdem.texasholdem.game.action_type import ActionType
+from texasholdem.texasholdem.card.card import Card
+from texasholdem.texasholdem.game.hand_phase import HandPhase
+from texasholdem.texasholdem.evaluator import evaluator
+
 
 
 FILE_EXTENSION = "pgn"

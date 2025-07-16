@@ -6,9 +6,8 @@ Evaluates hand strengths with optimizations in terms of speed and memory usage.
 import itertools
 from typing import List
 
-from texasholdem.card import card
-from texasholdem.card.card import Card
-from texasholdem.evaluator.lookup_table import LOOKUP_TABLE
+from texasholdem.texasholdem.card.card import Card
+from texasholdem.texasholdem.evaluator.lookup_table import LOOKUP_TABLE
 
 
 def _five(cards: List[Card]) -> int:

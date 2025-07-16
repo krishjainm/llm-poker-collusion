@@ -29,8 +29,8 @@ Example:
 from typing import Dict
 import itertools
 
-from texasholdem.card import card
-from texasholdem.card.card import Card
+from texasholdem.texasholdem.card import card
+from texasholdem.texasholdem.card.card import Card
 
 
 class LookupTable:

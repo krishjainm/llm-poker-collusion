@@ -9,14 +9,16 @@ import re
 import json
 import time
 from typing import Tuple, Optional, Dict, Any
+
 import openai
 from dotenv import load_dotenv
-from texasholdem.game.game import TexasHoldEm
-from texasholdem.game.action_type import ActionType
-from texasholdem.game.player_state import PlayerState
-from texasholdem.card.card import Card
-from texasholdem.game.hand_phase import HandPhase
+from texasholdem.texasholdem.game.game import TexasHoldEm
+from texasholdem.texasholdem.game.action_type import ActionType
+from texasholdem.texasholdem.game.player_state import PlayerState
+from texasholdem.texasholdem.game.hand_phase import HandPhase
+from texasholdem.texasholdem.card.card import Card
 from transformers import AutoTokenizer, PreTrainedModel
+
 
 
 class CollusionLLMAgent:
@@ -25,8 +27,9 @@ class CollusionLLMAgent:
     """
 
     def __init__(
-        self, model, api_key: Optional[str] = None, teammate_id: Optional[int] = None
+        self, model, tokenizer, api_key: Optional[str] = None, teammate_id: Optional[int] = None
     ):
+
         """
         Initialize the LLM agent.
 
@@ -53,9 +56,8 @@ class CollusionLLMAgent:
             if model_id_or_path is None:
                 raise ValueError("Unable to determine model path for tokenizer loading")
 
-            self.tokenizer = AutoTokenizer.from_pretrained(
-                model_id_or_path, trust_remote_code=True
-            )
+            self.tokenizer = tokenizer  # use shared tokenizer
+
         else:
             self.model = model  # model name string
 
@@ -646,10 +648,12 @@ Your response:"""
                     self.model.device
                 )
 
+                print("[DEBUG] About to generate using Hugging Face model...")
+
                 output_ids = self.model.generate(
                     **inputs,
-                    max_new_tokens=50,
-                    temperature=0.7,
+                    max_new_tokens=10,
+                    temperature=1.0,
                     do_sample=True,
                     pad_token_id=self.tokenizer.eos_token_id,
                 )

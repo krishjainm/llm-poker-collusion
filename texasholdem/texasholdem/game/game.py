@@ -10,6 +10,8 @@ It also includes the main :class:`TexasHoldEm` class.
 
 """
 from __future__ import annotations
+from texasholdem.texasholdem.game.history import PrehandHistory
+from texasholdem.texasholdem.game.history import BettingRoundHistory, SettleHistory  # << ADDED HERE
 
 import os
 from typing import Iterator, Callable, Dict, Tuple, Optional, Union, List, Iterable
@@ -20,22 +22,24 @@ import warnings
 
 from deprecated.sphinx import versionadded, versionchanged
 
-from texasholdem.card.card import Card
-from texasholdem.card.deck import Deck
-from texasholdem.game.history import (
+from texasholdem.texasholdem.card.card import Card
+from texasholdem.texasholdem.card.deck import Deck
+from texasholdem.texasholdem.game.history import (
     History,
-    PrehandHistory,
-    BettingRoundHistory,
     PlayerAction,
     HistoryImportError,
     SettleHistory,
 )
-from texasholdem.game.action_type import ActionType
-from texasholdem.game.hand_phase import HandPhase
-from texasholdem.game.player_state import PlayerState
-from texasholdem.game.move import MoveIterator
-from texasholdem.evaluator import evaluator
-from texasholdem.util.functions import check_raise
+
+
+
+from texasholdem.texasholdem.game.action_type import ActionType
+from texasholdem.texasholdem.game.hand_phase import HandPhase
+from texasholdem.texasholdem.game.player_state import PlayerState
+from texasholdem.texasholdem.game.move import MoveIterator
+from texasholdem.texasholdem.evaluator import evaluator
+from texasholdem.texasholdem.util.functions import check_raise
+
 
 
 class Player:
