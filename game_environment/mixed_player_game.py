@@ -194,7 +194,12 @@ class MixedPlayerGame:
 
                     if self._is_ai_player(current_player):
                         # Get action from AI
-                        action_type, total, reason = self._get_ai_action(current_player)
+                        result = self._get_ai_action(current_player)
+                        if result is None:
+                            print(f"[ERROR] Agent returned None. Forcing fold.")
+                            action_type, total, reason = ActionType.FOLD, None, None
+                        else:
+                            action_type, total, reason = result
 
                         # Take the action
                         if action_type == ActionType.RAISE and total is not None:

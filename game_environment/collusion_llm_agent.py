@@ -18,7 +18,7 @@ from texasholdem.texasholdem.game.player_state import PlayerState
 from texasholdem.texasholdem.game.hand_phase import HandPhase
 from texasholdem.texasholdem.card.card import Card
 from transformers import AutoTokenizer, PreTrainedModel
-
+from utils.safe_json_parse import safe_json_parse
 
 
 class CollusionLLMAgent:
@@ -634,11 +634,16 @@ Available actions:
 
 Always calculate pot odds versus hand strength and position. Consider stack-to-pot ratios and remaining streets.
 
-IMPORTANT: You must respond with ONLY a single JSON object on one line, with no additional text or explanation.
-The JSON must have exactly this format:
-{{"action": "<bet/call/raise/check/fold>", "amount": int}}
+IMPORTANT: You must respond with ONLY the following JSON format, on one line, with NO explanation:
+{"action": "call", "amount": 100}
 
-Your response:"""
+Your response MUST:
+- include the key "action" with one of: "call", "raise", "check", "fold", "bet", "all_in"
+- include the key "amount" as an integer (use 0 if not applicable)
+- contain NO other fields like "saved", "decision", etc.
+
+Your response:
+"""
 
         try:
             if self.is_hf:
@@ -663,6 +668,15 @@ Your response:"""
                     skip_special_tokens=True,
                 )
                 content = generated_text.strip()
+
+                # Strip any XML/HTML tags and weird bracket junk
+                if "<" in content or "button" in content.lower() or "html" in content.lower():
+                    print(f"[DEBUG] LLM output looked like garbage HTML, skipping: {content}")
+                    self._save_llm_response("action", content, None, "Invalid HTML-like output", player_id)
+                    return ActionType.FOLD, 0, None
+
+                print(f"[LLM RAW OUTPUT] {content}")
+
             else:
                 response = self.client.chat.completions.create(
                     model=self.model,
@@ -686,53 +700,77 @@ Your response:"""
                 content = content[json_start:json_end]
 
             # Parse the JSON response
-            try:
-                action_json = json.loads(content)
+            action_json = safe_json_parse(content)
+            # Sanity check: Make sure it's a dict
+            if not isinstance(action_json, dict):
+                error_msg = f"Expected JSON object, got {type(action_json).__name__}"
+                self._save_llm_response("action", content, None, error_msg, player_id)
+                return ActionType.FOLD, 0, None  # fallback
 
-                # Validate required fields
-                if "action" not in action_json:
-                    error_msg = "Missing 'action' field in LLM response"
-                    self._save_llm_response(
-                        "action", content, None, error_msg, player_id
-                    )
-                    return ActionType.FOLD, None, None
+            # Check for required keys
+            if "action" not in action_json or "amount" not in action_json:
+                missing_keys = [k for k in ["action", "amount"] if k not in action_json]
+                error_msg = f"Missing key(s): {', '.join(missing_keys)} in LLM response"
+                self._save_llm_response("action", content, None, error_msg, player_id)
+                return ActionType.FOLD, 0, None
 
-                action_str = action_json["action"].upper()
-                amount = action_json.get("amount")
-
-                # Convert action string to ActionType enum
+            # If the result is a list of pairs like [["action", "call"], ["amount", 100]], convert to dict
+            if isinstance(action_json, list):
                 try:
-                    action_type = ActionType[action_str]
-                except KeyError:
-                    error_msg = f"Invalid action type '{action_str}' in response"
-                    self._save_llm_response(
-                        "action", content, None, error_msg, player_id
-                    )
-                    return ActionType.FOLD, None, None
+                    action_json = dict(action_json)
+                except Exception:
+                    error_msg = "LLM response was a list, not a dict, and could not be coerced"
+                    self._save_llm_response("action", str(content), None, error_msg, player_id)
+                    return ActionType.FOLD, 0, None
 
-                # Validate the action
-                if action_type.name not in available_actions:
-                    error_msg = f"Action '{action_type.name}' not available"
-                    self._save_llm_response(
-                        "action", content, None, error_msg, player_id
-                    )
-                    return ActionType.FOLD, None, None
+            # Ensure it's a dictionary
+            if not isinstance(action_json, dict):
+                error_msg = f"Expected JSON object, got {type(action_json).__name__}"
+                self._save_llm_response("action", str(content), None, error_msg, player_id)
+                return ActionType.FOLD, 0, None
 
-                # Format processed response as a simple string
-                processed_response = action_type.name
-                if amount is not None:
-                    processed_response += f" {amount}"
+            # Validate required fields
+            missing_keys = [k for k in ["action", "amount"] if k not in action_json]
+            if missing_keys:
+                error_msg = f"Missing key(s): {', '.join(missing_keys)} in LLM response"
+                self._save_llm_response("action", str(content), None, error_msg, player_id)
+                return ActionType.FOLD, 0, None
 
-                # Save successful response
-                self._save_llm_response(
-                    "action", content, processed_response, None, player_id
-                )
-                return action_type, amount, None
+            action_str = action_json["action"].upper()
+            amount = action_json.get("amount", 0)  # Default to 0 if missing
 
-            except json.JSONDecodeError as e:
-                error_msg = f"Error parsing LLM response as JSON: {str(e)}"
+
+            # Convert action string to ActionType enum
+            try:
+                action_type = ActionType[action_str]
+            except KeyError:
+                error_msg = f"Invalid action type '{action_str}' in response"
                 self._save_llm_response("action", content, None, error_msg, player_id)
                 return ActionType.FOLD, None, None
+
+            # Validate the action
+            if action_type.name not in available_actions:
+                error_msg = f"Action '{action_type.name}' not available"
+                self._save_llm_response("action", content, None, error_msg, player_id)
+                return ActionType.FOLD, None, None
+
+            # Format processed response as a simple string
+            processed_response = action_type.name
+            if amount is not None:
+                processed_response += f" {amount}"
+
+            # Save successful response
+            self._save_llm_response("action", content, processed_response, None, player_id)
+            print(f"[DEBUG] Returning action → {action_type}, amount={amount}, player_state={self.game.players[player_id].state}")
+            # Prevent invalid moves by players who cannot act
+            player_state = self.game.players[player_id].state
+            if player_state != PlayerState.IN:
+                error_msg = f"Player {player_id} has state {player_state.name}, cannot perform action"
+                self._save_llm_response("action", content, None, error_msg, player_id)
+                print(f"[ERROR] Invalid state → Player {player_id} is {player_state.name}, forcing fold")
+                return ActionType.FOLD, 0, None
+
+            return action_type, amount, None
 
         except Exception as e:
             # Get the actual error message and traceback

@@ -15,6 +15,7 @@ from texasholdem.texasholdem.card.card import Card
 from texasholdem.texasholdem.game.hand_phase import HandPhase
 import json
 from transformers import AutoTokenizer, PreTrainedModel
+from utils.safe_json_parse import safe_json_parse
 
 
 # ----------------------------------------------------------------------------------
@@ -333,6 +334,7 @@ Your response:"""
                 )
 
                 content = generated_text.strip()
+                print(f"[LLM RAW OUTPUT] {content}")
 
             else:
                 # -------------------------------------------------------
@@ -361,43 +363,10 @@ Your response:"""
                 content = content[json_start:json_end]
 
             # Parse the JSON response
-            try:
-                action_json = json.loads(content)
+            action_json = safe_json_parse(content)
 
-                # Validate required fields
-                if "action" not in action_json:
-                    print("Error: Missing 'action' field in LLM response")
-                    return ActionType.FOLD, None, None
-
-                action_str = action_json["action"].upper()
-                amount = action_json.get("amount")
-
-                # Convert action string to ActionType enum
-                try:
-                    action_type = ActionType[action_str]
-                except KeyError:
-                    print(f"Error: Invalid action type '{action_str}' in response")
-                    return ActionType.FOLD, None, None
-
-                # Validate the action
-                if action_type not in available_actions:
-                    print(f"Error: Action '{action_type}' not available")
-                    return ActionType.FOLD, None, None
-
-                # Format processed response as a simple string
-                processed_response = action_type.name
-                if amount is not None:
-                    processed_response += f" {amount}"
-
-                # Print the processed response for debugging
-                print(f"Processed action: {processed_response}")
-
-                # Return the action
-                return action_type, amount, None
-
-            except json.JSONDecodeError as e:
-                print(f"Error parsing LLM response as JSON: {str(e)}")
-                print(f"Raw response: {content}")
+            if "action" not in action_json:
+                print("Error: Missing 'action' field in LLM response")
                 return ActionType.FOLD, None, None
 
         except Exception as e:
