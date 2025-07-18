@@ -1,0 +1,22 @@
+PREHAND
+Big Blind: 5
+Small Blind: 2
+Player Chips: 500,500,500,500,500,500
+Player Cards: [3c 5c],[Td 2h],[Tc 6d],[Th 5h],[5d 3d],[Ts 9s]
+
+PREFLOP
+New Cards: []
+1. (3,CALL);(4,FOLD);(5,FOLD);(0,FOLD);(1,FOLD);(2,FOLD)
+
+SETTLE
+New Cards: []
+Pot Winners:
+Pot 0: 12 to 3 with rank -1
+Final Chips:
+Player 2: 495
+Player 3: 507
+Player 4: 500
+Player 5: 500
+Player 0: 500
+Player 1: 498
+

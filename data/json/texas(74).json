@@ -1,0 +1,141 @@
+{
+  "prehand": {
+    "btn_loc": 5,
+    "big_blind": 5,
+    "small_blind": 2,
+    "player_chips": {
+      "0": 500,
+      "1": 500,
+      "2": 500,
+      "3": 500,
+      "4": 500,
+      "5": 500
+    },
+    "player_cards": {
+      "0": [
+        {
+          "rank": 2,
+          "suit": "diamonds"
+        },
+        {
+          "rank": 5,
+          "suit": "clubs"
+        }
+      ],
+      "1": [
+        {
+          "rank": 7,
+          "suit": "hearts"
+        },
+        {
+          "rank": 6,
+          "suit": "hearts"
+        }
+      ],
+      "2": [
+        {
+          "rank": 12,
+          "suit": "diamonds"
+        },
+        {
+          "rank": 7,
+          "suit": "spades"
+        }
+      ],
+      "3": [
+        {
+          "rank": 8,
+          "suit": "clubs"
+        },
+        {
+          "rank": 9,
+          "suit": "diamonds"
+        }
+      ],
+      "4": [
+        {
+          "rank": 4,
+          "suit": "spades"
+        },
+        {
+          "rank": 10,
+          "suit": "diamonds"
+        }
+      ],
+      "5": [
+        {
+          "rank": 1,
+          "suit": "diamonds"
+        },
+        {
+          "rank": 2,
+          "suit": "clubs"
+        }
+      ]
+    }
+  },
+  "preflop": {
+    "new_cards": [],
+    "actions": [
+      {
+        "player_id": 2,
+        "action_type": "FOLD",
+        "total": null,
+        "value": null
+      },
+      {
+        "player_id": 3,
+        "action_type": "FOLD",
+        "total": null,
+        "value": null
+      },
+      {
+        "player_id": 4,
+        "action_type": "FOLD",
+        "total": null,
+        "value": null
+      },
+      {
+        "player_id": 5,
+        "action_type": "FOLD",
+        "total": null,
+        "value": null
+      },
+      {
+        "player_id": 0,
+        "action_type": "CALL",
+        "total": null,
+        "value": null
+      },
+      {
+        "player_id": 1,
+        "action_type": "FOLD",
+        "total": null,
+        "value": null
+      }
+    ]
+  },
+  "flop": null,
+  "turn": null,
+  "river": null,
+  "settle": {
+    "new_cards": [],
+    "pot_winners": {
+      "0": {
+        "amount": 10,
+        "best_rank": -1,
+        "winners": [
+          0
+        ]
+      }
+    },
+    "final_chips": {
+      "0": 505,
+      "1": 495,
+      "2": 500,
+      "3": 500,
+      "4": 500,
+      "5": 500
+    }
+  }
+}
