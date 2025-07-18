@@ -794,6 +794,14 @@ Your response:
                 error_msg = f"Action '{action_type.name}' not available"
                 self._save_llm_response("action", content, None, error_msg, player_id)
                 return ActionType.FOLD, None, None
+            
+            # Additional: double check game state allows this action
+            player_state = self.game.players[player_id].state
+            if player_state != PlayerState.IN:
+                error_msg = f"Player {player_id} has state {player_state.name}, cannot perform action"
+                self._save_llm_response("action", content, None, error_msg, player_id)
+                print(f"[ERROR] Invalid state → Player {player_id} is {player_state.name}, forcing fold")
+                return ActionType.FOLD, 0, None
 
             # Format processed response as a simple string
             processed_response = action_type.name
