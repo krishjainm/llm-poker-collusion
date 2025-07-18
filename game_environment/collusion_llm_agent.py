@@ -707,11 +707,28 @@ Your response:
 
             # Parse the JSON response
             action_json = safe_json_parse(content)
+
+            # If parsing failed, try fixing common JSON issues
+            if not isinstance(action_json, dict):
+                try:
+                    # Attempt to fix trailing commas and quotes
+                    content_fixed = re.sub(r",\s*}", "}", content)
+                    content_fixed = re.sub(r",\s*]", "]", content_fixed)
+                    content_fixed = re.sub(r"[‘’]", "'", content_fixed)  # smart quotes
+                    content_fixed = re.sub(r'[“”]', '"', content_fixed)
+
+                    action_json = json.loads(content_fixed)
+                except Exception as e:
+                    error_msg = f"Failed to parse corrected JSON: {str(e)}"
+                    self._save_llm_response("action", content, None, error_msg, player_id)
+                    return ActionType.FOLD, 0, None  # fallback
+
             # Sanity check: Make sure it's a dict
             if not isinstance(action_json, dict):
                 error_msg = f"Expected JSON object, got {type(action_json).__name__}"
                 self._save_llm_response("action", content, None, error_msg, player_id)
                 return ActionType.FOLD, 0, None  # fallback
+
 
             # Check for required keys
             if "action" not in action_json or "amount" not in action_json:
