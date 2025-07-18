@@ -678,6 +678,7 @@ Your response:
                 print(f"[LLM RAW OUTPUT] {content}")
 
             else:
+                # First attempt with regular prompt
                 response = self.client.chat.completions.create(
                     model=self.model,
                     messages=[
@@ -690,8 +691,25 @@ Your response:
                     temperature=0.7,
                     max_tokens=50,
                 )
+                content = response.choices[0].message.content.strip()
 
-                content = response.choices[0].message.content.strip()  # type: ignore[union-attr]
+                # Retry fallback if response is garbage
+                if not content.strip().startswith("{") or any(tag in content.lower() for tag in ["<html", "<bot", "<button", "</", "<div"]):
+                    print(f"[WARNING] First LLM response looked invalid or like HTML. Retrying with stricter prompt...")
+                    fallback_prompt = prompt + "\nSTRICT MODE: JSON only. No explanations. No formatting. Only: {\"action\": \"call\", \"amount\": 100}"
+                    retry_response = self.client.chat.completions.create(
+                        model=self.model,
+                        messages=[
+                            {
+                                "role": "system",
+                                "content": "You are a poker agent. STRICT MODE: Only respond with JSON like: {\"action\": \"call\", \"amount\": 100}",
+                            },
+                            {"role": "user", "content": fallback_prompt},
+                        ],
+                        temperature=0.5,
+                        max_tokens=50,
+                    )
+                    content = retry_response.choices[0].message.content.strip()
 
             # Try to find JSON in the response if there's additional text
             json_start = content.find("{")
