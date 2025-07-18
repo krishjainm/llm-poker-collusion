@@ -725,6 +725,10 @@ Your response:
 
             # Parse the JSON response
             action_json = safe_json_parse(content)
+            # Normalize keys to lowercase for robustness
+            if isinstance(action_json, dict):
+                action_json = {k.lower(): v for k, v in action_json.items()}
+
 
             # If parsing failed, try fixing common JSON issues
             if not isinstance(action_json, dict):
@@ -753,6 +757,15 @@ Your response:
                 missing_keys = [k for k in ["action", "amount"] if k not in action_json]
                 error_msg = f"Missing key(s): {', '.join(missing_keys)} in LLM response"
                 self._save_llm_response("action", content, None, error_msg, player_id)
+
+                # Retry once if missing keys and haven't retried yet
+            if not hasattr(self, "_retried_action"):
+                print("[WARNING] Missing keys, retrying once...")
+                self._retried_action = True
+                return self.get_action(game, player_id)
+            else:
+                del self._retried_action  # reset flag after second attempt
+
                 return ActionType.FOLD, 0, None
 
             # If the result is a list of pairs like [["action", "call"], ["amount", 100]], convert to dict
