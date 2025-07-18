@@ -638,9 +638,10 @@ IMPORTANT: You must respond with only a single JSON object on one line, no extra
 It must match this format exactly: {"action": "call", "amount": 100}
 
 Your response MUST:
-- include the key "action" with one of: "call", "raise", "check", "fold", "bet", "all_in"
-- include the key "amount" as an integer (use 0 if not applicable)
-- contain NO other fields like "saved", "decision", etc.
+- Be a single valid JSON object with **only** these two keys: "action" and "amount"
+- "action" must be one of: "call", "raise", "check", "fold", "bet", "all_in"
+- "amount" must be an integer (use 0 if not applicable)
+- Do NOT include extra fields, explanations, markdown, XML/HTML, or formatting
 
 Your response:
 """
@@ -744,6 +745,9 @@ Your response:
                     error_msg = f"Failed to parse corrected JSON: {str(e)}"
                     self._save_llm_response("action", content, None, error_msg, player_id)
                     return ActionType.FOLD, 0, None  # fallback
+
+            # Retry logging for malformed JSON objects
+            print(f"[RETRY] First LLM response was not a valid JSON object: {content}")
 
             # Sanity check: Make sure it's a dict
             if not isinstance(action_json, dict):
