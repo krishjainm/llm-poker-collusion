@@ -634,8 +634,8 @@ Available actions:
 
 Always calculate pot odds versus hand strength and position. Consider stack-to-pot ratios and remaining streets.
 
-IMPORTANT: You must respond with ONLY the following JSON format, on one line, with NO explanation:
-{"action": "call", "amount": 100}
+IMPORTANT: You must respond with only a single JSON object on one line, no extra text or formatting.
+It must match this format exactly: {"action": "call", "amount": 100}
 
 Your response MUST:
 - include the key "action" with one of: "call", "raise", "check", "fold", "bet", "all_in"
@@ -698,6 +698,12 @@ Your response:
             json_end = content.rfind("}") + 1
             if json_start >= 0 and json_end > json_start:
                 content = content[json_start:json_end]
+
+            # New: Sanity check for JSON start
+            if not content.strip().startswith("{"):
+                print(f"[WARNING] LLM response did not start with '{{': {content}")
+                raise ValueError("Malformed response, does not start with JSON object.")
+
 
             # Parse the JSON response
             action_json = safe_json_parse(content)
