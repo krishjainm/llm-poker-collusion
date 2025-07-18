@@ -244,7 +244,9 @@ Your response:"""
 
                 content = response.choices[0].message.content.strip()  # type: ignore[union-attr]
 
-            # Try to find JSON in the response if there's additional text
+            import html
+            content = html.unescape(content)  # Unescape HTML entities
+            content = re.sub(r'<[^>]+>', '', content)  # Remove all tags like <result ...>
             json_start = content.find("{")
             json_end = content.rfind("}") + 1
             if json_start >= 0 and json_end > json_start:
@@ -685,7 +687,7 @@ Your response:
                     messages=[
                         {
                             "role": "system",
-                            "content": "You are a poker player making decisions in a Texas Hold'em game while colluding with a teammate. You must respond with ONLY a single JSON object containing the action and amount, with no additional text.",
+                            "content": "You are a poker-playing AI. You must ONLY respond with a strict one-line JSON object like this: {\"action\": \"call\", \"amount\": 100}. Do not explain anything. Do not include HTML, markdown, or extra formatting. Only a JSON object with the exact keys 'action' and 'amount'.",
                         },
                         {"role": "user", "content": prompt},
                     ],
@@ -695,7 +697,7 @@ Your response:
                 content = response.choices[0].message.content.strip()
 
                 # Retry fallback if response is garbage
-                if not content.strip().startswith("{") or any(tag in content.lower() for tag in ["<html", "<bot", "<button", "</", "<div"]):
+                if not content.strip().startswith("{") or "<" in content or "action" not in content.lower() or "amount" not in content.lower():
                     print(f"[WARNING] First LLM response looked invalid or like HTML. Retrying with stricter prompt...")
                     fallback_prompt = prompt + "\nSTRICT MODE: JSON only. No explanations. No formatting. Only: {\"action\": \"call\", \"amount\": 100}"
                     retry_response = self.client.chat.completions.create(
@@ -719,12 +721,29 @@ Your response:
                 content = content[json_start:json_end]
 
             # New: Sanity check for JSON start
-            if not content.strip().startswith("{"):
-                print(f"[WARNING] LLM response did not start with '{{': {content}")
-                raise ValueError("Malformed response, does not start with JSON object.")
-
+            if not content.strip().startswith("{") or "<" in content or "action" not in content.lower() or "amount" not in content.lower():
+                print(f"[WARNING] First LLM response looked invalid. Retrying...")
+                self._save_llm_response("action", content, None, "Triggering fallback retry due to malformed response", player_id)
+                if not hasattr(self, "_retried_action"):
+                    self._retried_action = True
+                    return self.get_action(game, player_id)
+                else:
+                    del self._retried_action
+                    return ActionType.FOLD, 0, None
 
             # Parse the JSON response
+
+            # Hard filter: ignore LLM garbage responses with no "action"
+            if "action" not in content.lower() or not content.strip().startswith("{"):
+                print(f"[WARNING] LLM response looked junky, retrying: {content}")
+                self._save_llm_response("action", content, None, "Missing 'action' field or invalid format", player_id)
+                if not hasattr(self, "_retried_action"):
+                    self._retried_action = True
+                    return self.get_action(game, player_id)
+                else:
+                    del self._retried_action
+                    return ActionType.FOLD, 0, None
+
             action_json = safe_json_parse(content)
             # Normalize keys to lowercase for robustness
             if isinstance(action_json, dict):

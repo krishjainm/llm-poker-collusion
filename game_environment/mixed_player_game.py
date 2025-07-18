@@ -202,10 +202,15 @@ class MixedPlayerGame:
                             action_type, total, reason = result
 
                         # Take the action
-                        if action_type == ActionType.RAISE and total is not None:
-                            self.game.take_action(action_type, total=total)
-                        else:
-                            self.game.take_action(action_type)
+                        try:
+                            if action_type == ActionType.RAISE and total is not None:
+                                self.game.take_action(action_type, total=total)
+                            else:
+                                self.game.take_action(action_type)
+                        except Exception as e:
+                            print(f"[ERROR] Action failed: {e}. Forcing fold.")
+                            self.game.take_action(ActionType.FOLD)
+
                     else:
                         # Get action from human
                         self._get_human_action()
