@@ -4,7 +4,7 @@ from pathlib import Path
 
 def analyze_winnings():
     # Directory containing JSON files
-    json_dir = Path("data/json/fake")
+    json_dir = Path("data/json")
     
     # Initialize variables
     total_winnings = 0
